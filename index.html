@@ -69,6 +69,7 @@ body{background-color:#fff5f7;background-image:radial-gradient(#fbcfe8 20%,trans
      <button onclick="exportQuizzes(false)" class="pixel-btn bg-sky-200 px-3 py-2 rounded text-xs">💾 전체 퀴즈 내보내기</button>
      <button onclick="exportQuizzes(true)" class="pixel-btn bg-cyan-200 px-3 py-2 rounded text-xs">📤 기본문제 18개 제외하고 내보내기</button>
      <button onclick="openQuizUsageStats()" class="pixel-btn bg-violet-200 px-3 py-2 rounded text-xs">📊 문항별 누적 통계</button>
+     <button onclick="openFirebaseStorageReport()" class="pixel-btn bg-indigo-200 px-3 py-2 rounded text-xs">☁️ Firebase 용량 확인</button>
      <button onclick="openImportModal()" class="pixel-btn bg-purple-200 px-3 py-2 rounded text-xs">📥 학급 퀴즈 붙여넣기</button>
      <button onclick="resetQuizzesToDefault()" class="pixel-btn bg-rose-200 px-3 py-2 rounded text-xs">🔄 기본 리셋</button>
     </div>
@@ -208,9 +209,21 @@ body{background-color:#fff5f7;background-image:radial-gradient(#fbcfe8 20%,trans
  <div class="modal-card pixel-box bg-white max-w-4xl w-full p-5 rounded-2xl space-y-4 border-violet-400 max-h-[92vh] overflow-y-auto">
   <div class="flex justify-between items-center gap-2"><div><h3 class="text-xl font-bold text-violet-900">📊 문항별 누적 출제·응답 통계</h3><p class="text-xs text-slate-500 mt-1">여러 차례의 게임에서 누적된 출제 횟수와 정답·오답 기록입니다.</p></div><button onclick="closeQuizUsageStats()" class="pixel-btn bg-slate-200 px-3 py-2 rounded">✕</button></div>
   <div id="quiz-usage-stats-summary" class="grid grid-cols-2 sm:grid-cols-4 gap-2"></div>
-  <div class="flex flex-wrap items-center gap-2"><input id="quiz-stats-search" oninput="renderQuizUsageStats()" class="flex-1 min-w-[180px] border-2 border-violet-200 rounded-lg p-2 text-sm" placeholder="문제 내용 또는 출제자 검색"><select id="quiz-stats-sort" onchange="renderQuizUsageStats()" class="border-2 border-violet-200 rounded-lg p-2 text-sm"><option value="asked">출제 횟수순</option><option value="accuracy">정답률 낮은 순</option><option value="wrong">오답 횟수순</option><option value="recent">최근 오답순</option></select></div>
+  <div class="flex flex-wrap items-center gap-2"><input id="quiz-stats-search" oninput="renderQuizUsageStats()" class="flex-1 min-w-[180px] border-2 border-violet-200 rounded-lg p-2 text-sm" placeholder="문제 내용 또는 출제자 검색"><select id="quiz-stats-sort" onchange="renderQuizUsageStats()" class="border-2 border-violet-200 rounded-lg p-2 text-sm"><option value="asked">출제 횟수순</option><option value="accuracy">정답률 낮은 순</option><option value="wrong">오답 횟수순</option><option value="wrongChoice">오답 선택지 많은 순</option></select></div>
   <div id="quiz-usage-stats-list" class="space-y-3"></div>
   <button onclick="closeQuizUsageStats()" class="w-full pixel-btn bg-slate-200 py-3 rounded-lg">닫기</button>
+ </div>
+</div>
+
+<!-- Firebase 저장 용량 확인 모달 -->
+<div id="firebase-storage-modal" class="fixed inset-0 bg-slate-900/80 z-[86] hidden items-center justify-center p-4">
+ <div class="modal-card pixel-box bg-white max-w-2xl w-full p-5 rounded-2xl space-y-4 border-indigo-400 max-h-[92vh] overflow-y-auto">
+  <div class="flex justify-between items-center gap-2"><div><h3 class="text-xl font-bold text-indigo-900">☁️ Firebase 저장 용량 확인</h3><p class="text-xs text-slate-500 mt-1">현재 공용 퀴즈 컬렉션을 읽어 계산한 추정치입니다.</p></div><button onclick="closeFirebaseStorageReport()" class="pixel-btn bg-slate-200 px-3 py-2 rounded">✕</button></div>
+  <div id="firebase-storage-status" class="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm">확인 버튼을 눌러 서버 데이터를 조회하세요.</div>
+  <div id="firebase-storage-summary" class="grid grid-cols-2 sm:grid-cols-3 gap-2"></div>
+  <div><h4 class="font-bold text-indigo-900 mb-2">📦 용량이 큰 문항 TOP 5</h4><div id="firebase-storage-largest" class="space-y-2 text-sm"><p class="text-slate-400">아직 조회하지 않았습니다.</p></div></div>
+  <p class="text-xs text-slate-500 bg-slate-50 rounded-lg p-3">※ 표시 용량은 문서 데이터를 JSON으로 직렬화한 바이트 수를 합산한 추정치입니다. Firestore의 실제 저장 용량에는 필드·인덱스 등의 오버헤드가 포함되므로 콘솔의 실제 사용량과 다를 수 있습니다. 이 화면은 앱의 퀴즈 컬렉션만 계산하며 Firebase 프로젝트 전체 사용량이나 읽기·쓰기 횟수를 조회하지 않습니다.</p>
+  <div class="flex gap-2"><button onclick="refreshFirebaseStorageReport()" class="flex-1 pixel-btn bg-indigo-200 py-3 rounded-lg font-bold">🔄 서버에서 다시 조회</button><button onclick="closeFirebaseStorageReport()" class="flex-1 pixel-btn bg-slate-200 py-3 rounded-lg">닫기</button></div>
  </div>
 </div>
 
@@ -310,6 +323,21 @@ function setCloudStatus(message, colorClass) {
     await signInAnonymously(auth);
 
     const quizCollection = collection(db, 'artifacts', appId, 'public', 'data', 'quizzes');
+    // 현재 공용 퀴즈 컬렉션의 문서 수와 직렬화 기준 추정 용량을 조회합니다.
+    window.getFirebaseStorageReport = async () => {
+      const snapshot = await getDocs(quizCollection);
+      const encoder = new TextEncoder();
+      const rows = [];
+      let totalBytes = 0;
+      snapshot.forEach(item => {
+        const data = { id: item.id, ...item.data() };
+        const bytes = encoder.encode(JSON.stringify(data)).length;
+        totalBytes += bytes;
+        rows.push({ id: item.id, question: data.question || '(문제 내용 없음)', bytes });
+      });
+      rows.sort((a, b) => b.bytes - a.bytes);
+      return { documentCount: snapshot.size, totalBytes, largest: rows.slice(0, 5), checkedAt: Date.now() };
+    };
     let initialMigrationStarted = false;
 
     window.addQuizToCloud = async (quiz) => {
@@ -326,21 +354,22 @@ function setCloudStatus(message, colorClass) {
       await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'quizzes', String(id)));
     };
 
-    // 문항별 누적 통계는 트랜잭션으로 갱신해 여러 기기에서 동시에 게임해도 수치가 덮어써지지 않게 합니다.
-    window.recordQuizUsageInCloud = async (quizId, isCorrect, wrongRecord) => {
+    // 오답은 개별 이력 대신 선택지 번호별 누적 횟수만 저장해 문서 크기를 줄입니다.
+    window.recordQuizUsageInCloud = async (quizId, isCorrect, wrongChoiceKey) => {
       const ref = doc(db, 'artifacts', appId, 'public', 'data', 'quizzes', String(quizId));
       await runTransaction(db, async (transaction) => {
         const snapshot = await transaction.get(ref);
         if (!snapshot.exists()) return;
         const data = snapshot.data();
         const current = data.usageStats || {};
-        const wrongAnswers = Array.isArray(current.wrongAnswers) ? [...current.wrongAnswers] : [];
-        if (!isCorrect && wrongRecord) wrongAnswers.push(wrongRecord);
+        const compact = compactWrongStats(current, data.options);
+        const wrongCounts = { ...compact.wrongCounts };
+        if (!isCorrect && wrongChoiceKey) wrongCounts[wrongChoiceKey] = Number(wrongCounts[wrongChoiceKey] || 0) + 1;
         transaction.update(ref, {
           usageStats: {
             asked: Number(current.asked || 0) + 1,
             correct: Number(current.correct || 0) + (isCorrect ? 1 : 0),
-            wrongAnswers
+            wrongCounts
           }
         });
       });
@@ -382,6 +411,15 @@ function setCloudStatus(message, colorClass) {
 
       const cloudQuizzes = [];
       snapshot.forEach(item => cloudQuizzes.push({ id: item.id, ...item.data() }));
+      // 서버에 남아 있는 구형 상세 오답 기록도 선택지별 누적 횟수로 압축해 저장합니다.
+      for (const quiz of cloudQuizzes) {
+        if (Array.isArray(quiz.usageStats?.wrongAnswers)) {
+          quiz.usageStats = compactWrongStats(quiz.usageStats, quiz.options);
+          await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'quizzes', String(quiz.id)), quiz);
+        } else if (quiz.usageStats) {
+          quiz.usageStats = compactWrongStats(quiz.usageStats, quiz.options);
+        }
+      }
       cloudQuizzes.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
       quizBank = cloudQuizzes;
       saveQuizzesToStorage();
@@ -458,7 +496,7 @@ function loadQuizzesFromStorage(){
   quizBank=[...DEFAULT_QUIZZES];
   quizStorageAvailable=false;
  }
- quizBank=quizBank.map(q=>({...q,usageStats:q.usageStats||{asked:0,correct:0,wrongAnswers:[]}}));
+ quizBank=quizBank.map(q=>({...q,usageStats:compactWrongStats(q.usageStats||{asked:0,correct:0},q.options)}));
  saveQuizzesToStorage();
 }
 function saveQuizzesToStorage(){
@@ -534,11 +572,64 @@ function exportQuizzes(excludeDefaults=false){
  a.download=excludeDefaults?'국어_문법_퀴즈_기본문제제외.json':'국어_문법_퀴즈_전체.json';
  document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
-function getQuizUsageStats(quiz){
- const raw=quiz.usageStats||{};const asked=Number(raw.asked||0),correct=Number(raw.correct||0);
- const wrongAnswers=Array.isArray(raw.wrongAnswers)?raw.wrongAnswers:[];
- return {asked,correct,wrongAnswers,wrong:Math.max(0,asked-correct),accuracy:asked?Math.round(correct/asked*100):0};
+function compactWrongStats(raw={},options=[]){
+ const wrongCounts={...(raw.wrongCounts||{})};
+ // 이전 버전의 상세 오답 기록은 선택지 번호별 횟수로 한 번 변환합니다.
+ if(Array.isArray(raw.wrongAnswers)){
+  raw.wrongAnswers.forEach(w=>{
+   let key='시간 초과';
+   if(!w.timeout){
+    const chosen=String(w.chosenOption??'');
+    const index=Array.isArray(options)?options.findIndex(option=>String(option)===chosen):-1;
+    key=index>=0?String(index+1):(/^([1-4])$/.test(chosen)?chosen:'기타');
+   }
+   wrongCounts[key]=Number(wrongCounts[key]||0)+1;
+  });
+ }
+ return {asked:Number(raw.asked||0),correct:Number(raw.correct||0),wrongCounts,wrong:Math.max(0,Number(raw.asked||0)-Number(raw.correct||0)),accuracy:raw.asked?Math.round(Number(raw.correct||0)/Number(raw.asked)*100):0};
 }
+function getQuizUsageStats(quiz){return compactWrongStats(quiz.usageStats||{},quiz.options)}
+function formatStorageBytes(bytes){
+ const value=Number(bytes)||0;
+ if(value<1024)return value+' B';
+ if(value<1024*1024)return (value/1024).toFixed(2)+' KB';
+ if(value<1024*1024*1024)return (value/(1024*1024)).toFixed(2)+' MB';
+ return (value/(1024*1024*1024)).toFixed(2)+' GB';
+}
+function openFirebaseStorageReport(){
+ showModal('firebase-storage-modal');
+ refreshFirebaseStorageReport();
+}
+function closeFirebaseStorageReport(){hideModal('firebase-storage-modal')}
+async function refreshFirebaseStorageReport(){
+ const status=$('firebase-storage-status'),summary=$('firebase-storage-summary'),largest=$('firebase-storage-largest');
+ status.textContent='⏳ Firebase 서버에서 퀴즈 데이터를 조회하고 있습니다…';
+ summary.innerHTML='';largest.innerHTML='';
+ if(typeof window.getFirebaseStorageReport!=='function'){
+  status.textContent='⚠️ Firebase 서버에 연결되지 않았습니다. HTTPS 웹 주소에서 접속하고 익명 로그인 및 Firestore 연결 상태를 확인해 주세요. 로컬 파일 실행에서는 조회할 수 없습니다.';
+  return;
+ }
+ try{
+  const report=await window.getFirebaseStorageReport();
+  status.textContent='✅ 조회 완료 · '+new Date(report.checkedAt).toLocaleString('ko-KR');
+  [['저장된 문항',report.documentCount.toLocaleString('ko-KR')+'개'],['추정 데이터 용량',formatStorageBytes(report.totalBytes)],['문항당 평균',formatStorageBytes(report.documentCount?Math.round(report.totalBytes/report.documentCount):0)]].forEach(([label,value])=>{
+   const card=document.createElement('div');card.className='bg-indigo-50 border border-indigo-200 rounded-lg p-3 text-center';
+   const strong=document.createElement('b');strong.className='block text-xl text-indigo-900';strong.textContent=value;
+   const caption=document.createElement('span');caption.className='text-xs text-slate-600';caption.textContent=label;card.append(strong,caption);summary.appendChild(card);
+  });
+  if(!report.largest.length){largest.innerHTML='<p class="text-slate-400">저장된 문항이 없습니다.</p>';return;}
+  report.largest.forEach((item,index)=>{
+   const row=document.createElement('div');row.className='flex justify-between gap-3 bg-slate-50 border rounded-lg p-2';
+   const title=document.createElement('span');title.className='min-w-0';title.textContent=(index+1)+'. '+item.question; 
+   const size=document.createElement('b');size.className='shrink-0 text-indigo-800';size.textContent=formatStorageBytes(item.bytes);
+   row.append(title,size);largest.appendChild(row);
+  });
+ }catch(error){
+  console.error('Firebase 용량 조회 실패:',error);
+  status.textContent='❌ 조회에 실패했습니다: '+(error?.message||'알 수 없는 오류')+' · Firestore 보안 규칙과 인터넷 연결을 확인해 주세요.';
+ }
+}
+
 function openQuizUsageStats(){
  $('quiz-stats-search').value='';$('quiz-stats-sort').value='asked';renderQuizUsageStats();showModal('quiz-usage-stats-modal');
 }
@@ -547,7 +638,7 @@ function renderQuizUsageStats(){
  const search=($('quiz-stats-search')?.value||'').trim().toLowerCase();
  const sort=$('quiz-stats-sort')?.value||'asked';
  let rows=quizBank.map(q=>({quiz:q,stats:getQuizUsageStats(q)})).filter(x=>!search||[x.quiz.question,x.quiz.author,x.quiz.category].some(v=>String(v||'').toLowerCase().includes(search)));
- rows.sort((a,b)=>sort==='accuracy'?(a.stats.accuracy-b.stats.accuracy||b.stats.asked-a.stats.asked):sort==='wrong'?(b.stats.wrong-a.stats.wrong):sort==='recent'?((b.stats.wrongAnswers.at(-1)?.timestamp||0)-(a.stats.wrongAnswers.at(-1)?.timestamp||0)):b.stats.asked-a.stats.asked);
+ rows.sort((a,b)=>sort==='accuracy'?(a.stats.accuracy-b.stats.accuracy||b.stats.asked-a.stats.asked):sort==='wrong'?(b.stats.wrong-a.stats.wrong):sort==='wrongChoice'?(Math.max(0,...Object.values(b.stats.wrongCounts).map(Number))-Math.max(0,...Object.values(a.stats.wrongCounts).map(Number))):b.stats.asked-a.stats.asked);
  const asked=rows.reduce((n,x)=>n+x.stats.asked,0),correct=rows.reduce((n,x)=>n+x.stats.correct,0),wrong=rows.reduce((n,x)=>n+x.stats.wrong,0),accuracy=asked?Math.round(correct/asked*100):0;
  $('quiz-usage-stats-summary').innerHTML='';
  [['등록 문항',quizBank.length+'개'],['누적 출제',asked+'회'],['정답',correct+'회'],['전체 정답률',accuracy+'%']].forEach(([label,value])=>{const el=document.createElement('div');el.className='bg-violet-50 border border-violet-200 rounded-lg p-3 text-center';el.innerHTML=`<b class="block text-xl text-violet-900">${escapeHtml(value)}</b><span class="text-xs text-slate-600">${escapeHtml(label)}</span>`;$('quiz-usage-stats-summary').appendChild(el)});
@@ -562,22 +653,23 @@ function renderQuizUsageStats(){
   const metrics=document.createElement('div');metrics.className='grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs shrink-0';
   [['출제',stats.asked+'회'],['정답',stats.correct+'회'],['정답률',stats.accuracy+'%'],['오답',stats.wrong+'회']].forEach(([k,v])=>{const m=document.createElement('div');m.className='bg-slate-50 rounded p-2';m.innerHTML=`<b class="block text-sm">${escapeHtml(v)}</b><span class="text-slate-500">${escapeHtml(k)}</span>`;metrics.appendChild(m)});
   head.append(left,metrics);card.appendChild(head);
-  const details=document.createElement('details');details.className='text-xs';const summary=document.createElement('summary');summary.className='cursor-pointer text-rose-700 font-bold py-1';summary.textContent=`❌ 오답 문항 기록 보기 (${stats.wrongAnswers.length}건)`;details.appendChild(summary);
-  if(!stats.wrongAnswers.length){const p=document.createElement('p');p.className='text-slate-400 py-2';p.textContent=stats.asked?'누적 오답이 없습니다.':'아직 게임에 출제되지 않은 문제입니다.';details.appendChild(p)}
-  else {const list=document.createElement('div');list.className='space-y-2 mt-2';[...stats.wrongAnswers].sort((a,b)=>(b.timestamp||0)-(a.timestamp||0)).forEach(w=>{const item=document.createElement('div');item.className='bg-rose-50 border border-rose-100 rounded-lg p-2';const when=w.timestamp?new Date(w.timestamp).toLocaleString('ko-KR'):'시간 정보 없음';const chosen=w.timeout?'시간 초과':(w.chosenOption||'선택 정보 없음');item.textContent=`${when} · ${w.player||'학생 정보 없음'} · 선택한 답: ${chosen} · 정답: ${w.correctOption||'정답 정보 없음'}`;list.appendChild(item)});details.appendChild(list)}
+  const wrongEntries=Object.entries(stats.wrongCounts).filter(([,count])=>Number(count)>0).sort((a,b)=>Number(b[1])-Number(a[1]));
+  const details=document.createElement('details');details.className='text-xs';const summary=document.createElement('summary');summary.className='cursor-pointer text-rose-700 font-bold py-1';summary.textContent=`❌ 선택지별 오답 횟수 보기 (${stats.wrong}회)`;details.appendChild(summary);
+  if(!wrongEntries.length){const p=document.createElement('p');p.className='text-slate-400 py-2';p.textContent=stats.asked?'누적 오답이 없습니다.':'아직 게임에 출제되지 않은 문제입니다.';details.appendChild(p)}
+  else {const list=document.createElement('div');list.className='flex flex-wrap gap-2 mt-2';wrongEntries.forEach(([key,count])=>{const item=document.createElement('span');item.className='bg-rose-50 border border-rose-100 rounded-lg px-3 py-2';item.textContent=`${key==='시간 초과'?'시간 초과':key==='기타'?'기타':key+'번'}: ${Number(count)}회`;list.appendChild(item)});details.appendChild(list)}
   card.appendChild(details);box.appendChild(card);
  });
 }
 function recordQuizUsage(quiz,isCorrect,chosenIndex,player){
  if(!quiz)return;
  const target=quizBank.find(q=>String(q.id)===String(quiz.id));if(!target)return;
- if(!target.usageStats)target.usageStats={asked:0,correct:0,wrongAnswers:[]};
+ target.usageStats=compactWrongStats(target.usageStats||{},target.options);
  target.usageStats.asked=Number(target.usageStats.asked||0)+1;
  target.usageStats.correct=Number(target.usageStats.correct||0)+(isCorrect?1:0);
- let wrongRecord=null;
- if(!isCorrect){wrongRecord={timestamp:Date.now(),player:player?.name||'학생',chosenOption:chosenIndex===-1?'시간 초과':(quiz.options||[])[chosenIndex]||'선택 정보 없음',correctOption:(quiz.options||[])[Number(quiz.answer)]||'정답 정보 없음',timeout:chosenIndex===-1};target.usageStats.wrongAnswers=Array.isArray(target.usageStats.wrongAnswers)?target.usageStats.wrongAnswers:[];target.usageStats.wrongAnswers.push(wrongRecord)}
+ let wrongChoiceKey=null;
+ if(!isCorrect){wrongChoiceKey=chosenIndex===-1?'시간 초과':String(chosenIndex+1);target.usageStats.wrongCounts[wrongChoiceKey]=Number(target.usageStats.wrongCounts[wrongChoiceKey]||0)+1}
  saveQuizzesToStorage();
- if(window.recordQuizUsageInCloud){window.recordQuizUsageInCloud(quiz.id,isCorrect,wrongRecord).catch(error=>{console.error('문항별 통계 서버 저장 실패:',error);setCloudStatus('⚠️ 통계 서버 저장 실패','bg-rose-100 text-rose-900 border-rose-300')})}
+ if(window.recordQuizUsageInCloud){window.recordQuizUsageInCloud(quiz.id,isCorrect,wrongChoiceKey).catch(error=>{console.error('문항별 통계 서버 저장 실패:',error);setCloudStatus('⚠️ 통계 서버 저장 실패','bg-rose-100 text-rose-900 border-rose-300')})}
 }
 function openImportModal(){$('import-json-text').value='';showModal('import-modal')}
 function closeImportModal(){hideModal('import-modal')}
