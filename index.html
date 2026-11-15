@@ -66,7 +66,9 @@ body{background-color:#fff5f7;background-image:radial-gradient(#fbcfe8 20%,trans
    <div class="pixel-box bg-pink-100 border-pink-300 p-4 rounded-xl space-y-3">
     <h3 class="font-bold text-pink-900">📁 퀴즈 데이터 가져오기 / 내보내기</h3>
     <div class="flex flex-wrap gap-2">
-     <button onclick="exportQuizzes()" class="pixel-btn bg-sky-200 px-3 py-2 rounded text-xs">💾 퀴즈 내보내기</button>
+     <button onclick="exportQuizzes(false)" class="pixel-btn bg-sky-200 px-3 py-2 rounded text-xs">💾 전체 퀴즈 내보내기</button>
+     <button onclick="exportQuizzes(true)" class="pixel-btn bg-cyan-200 px-3 py-2 rounded text-xs">📤 기본문제 18개 제외하고 내보내기</button>
+     <button onclick="openQuizUsageStats()" class="pixel-btn bg-violet-200 px-3 py-2 rounded text-xs">📊 문항별 누적 통계</button>
      <button onclick="openImportModal()" class="pixel-btn bg-purple-200 px-3 py-2 rounded text-xs">📥 학급 퀴즈 붙여넣기</button>
      <button onclick="resetQuizzesToDefault()" class="pixel-btn bg-rose-200 px-3 py-2 rounded text-xs">🔄 기본 리셋</button>
     </div>
@@ -91,6 +93,16 @@ body{background-color:#fff5f7;background-image:radial-gradient(#fbcfe8 20%,trans
     <button onclick="setPlayerCount(4)" id="pcount-4" class="pixel-btn bg-white px-4 py-2 rounded-lg font-bold">4팀</button>
    </div>
    <div id="player-names-input" class="grid grid-cols-2 gap-3 mt-4 text-left"></div>
+  </div>
+  <div class="bg-purple-50 p-4 rounded-xl border-2 border-purple-200 text-left space-y-2">
+   <label for="game-category-filter" class="block text-sm font-bold text-purple-900">📚 출제할 문법 영역</label>
+   <select id="game-category-filter" class="w-full border-2 border-purple-200 rounded-lg p-3 bg-white text-sm">
+    <option value="all">전체 문법 영역에서 출제</option>
+    <option value="단어와 형태소">단어와 형태소</option>
+    <option value="어근과 접사">어근과 접사</option>
+    <option value="단어의 종류">단어의 종류</option>
+   </select>
+   <p id="game-category-count" class="text-xs text-purple-700">선택한 영역의 문제 수를 확인할 수 있습니다.</p>
   </div>
   <button onclick="startBoardGame()" class="w-full pixel-btn bg-amber-300 py-4 text-lg font-bold rounded-xl">🚀 국어 문법 보드게임 시작!</button>
  </div>
@@ -173,13 +185,59 @@ body{background-color:#fff5f7;background-image:radial-gradient(#fbcfe8 20%,trans
    <p id="detail-quiz-answer" class="font-bold text-emerald-800"></p>
    <div><p class="text-xs font-bold text-emerald-800">💡 정답 해설</p><p id="detail-quiz-explanation" class="text-sm mt-1"></p></div>
   </div>
-  <div class="flex gap-2"><button type="button" onclick="closeQuizDetail()" class="flex-1 pixel-btn bg-slate-200 py-3 rounded-lg font-bold">닫기</button><button type="button" onclick="deleteQuizFromDetail()" class="pixel-btn bg-rose-200 px-4 py-3 rounded-lg font-bold text-rose-800">문제 삭제</button></div>
+  <div class="flex flex-wrap gap-2"><button type="button" onclick="closeQuizDetail()" class="flex-1 pixel-btn bg-slate-200 py-3 rounded-lg font-bold">닫기</button><button type="button" onclick="openQuizEdit()" class="pixel-btn bg-sky-200 px-4 py-3 rounded-lg font-bold text-sky-900">문제 수정</button><button type="button" onclick="deleteQuizFromDetail()" class="pixel-btn bg-rose-200 px-4 py-3 rounded-lg font-bold text-rose-800">문제 삭제</button></div>
+ </div>
+</div>
+
+<!-- 퀴즈 수정 모달 -->
+<div id="quiz-edit-modal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-[69] hidden items-center justify-center p-4">
+ <div class="modal-card pixel-box bg-white max-w-lg w-full p-6 rounded-2xl space-y-3 border-sky-400 max-h-[90vh] overflow-y-auto">
+  <h3 class="text-lg font-bold text-sky-900">✏️ 퀴즈 수정</h3>
+  <label class="block text-xs font-bold">출제자 이름<input id="edit-quiz-author" class="mt-1 w-full border-2 border-sky-200 rounded-lg p-2"></label>
+  <label class="block text-xs font-bold">문법 주제<select id="edit-quiz-category" class="mt-1 w-full border-2 border-sky-200 rounded-lg p-2"><option>단어와 형태소</option><option>어근과 접사</option><option>단어의 종류</option></select></label>
+  <label class="block text-xs font-bold">문제 지문<textarea id="edit-quiz-question" rows="3" class="mt-1 w-full border-2 border-sky-200 rounded-lg p-2"></textarea></label>
+  <div class="space-y-2"><span class="text-xs font-bold">선택지</span><input id="edit-opt-0" class="w-full border border-sky-200 rounded p-2 text-sm" placeholder="1번 보기"><input id="edit-opt-1" class="w-full border border-sky-200 rounded p-2 text-sm" placeholder="2번 보기"><input id="edit-opt-2" class="w-full border border-sky-200 rounded p-2 text-sm" placeholder="3번 보기"><input id="edit-opt-3" class="w-full border border-sky-200 rounded p-2 text-sm" placeholder="4번 보기"></div>
+  <label class="block text-xs font-bold">정답<select id="edit-quiz-answer" class="mt-1 w-full border border-sky-200 rounded p-2"><option value="0">1번</option><option value="1">2번</option><option value="2">3번</option><option value="3">4번</option></select></label>
+  <label class="block text-xs font-bold">정답 해설<textarea id="edit-quiz-explanation" rows="2" class="mt-1 w-full border-2 border-sky-200 rounded-lg p-2"></textarea></label>
+  <div class="flex gap-2"><button type="button" onclick="closeQuizEdit()" class="flex-1 pixel-btn bg-slate-200 py-3 rounded-lg">취소</button><button type="button" onclick="saveQuizEdit()" class="flex-1 pixel-btn bg-sky-300 py-3 rounded-lg font-bold">수정 내용 저장</button></div>
+ </div>
+</div>
+
+<!-- 문항별 누적 통계 모달 -->
+<div id="quiz-usage-stats-modal" class="fixed inset-0 bg-slate-900/80 z-[85] hidden items-center justify-center p-4">
+ <div class="modal-card pixel-box bg-white max-w-4xl w-full p-5 rounded-2xl space-y-4 border-violet-400 max-h-[92vh] overflow-y-auto">
+  <div class="flex justify-between items-center gap-2"><div><h3 class="text-xl font-bold text-violet-900">📊 문항별 누적 출제·응답 통계</h3><p class="text-xs text-slate-500 mt-1">여러 차례의 게임에서 누적된 출제 횟수와 정답·오답 기록입니다.</p></div><button onclick="closeQuizUsageStats()" class="pixel-btn bg-slate-200 px-3 py-2 rounded">✕</button></div>
+  <div id="quiz-usage-stats-summary" class="grid grid-cols-2 sm:grid-cols-4 gap-2"></div>
+  <div class="flex flex-wrap items-center gap-2"><input id="quiz-stats-search" oninput="renderQuizUsageStats()" class="flex-1 min-w-[180px] border-2 border-violet-200 rounded-lg p-2 text-sm" placeholder="문제 내용 또는 출제자 검색"><select id="quiz-stats-sort" onchange="renderQuizUsageStats()" class="border-2 border-violet-200 rounded-lg p-2 text-sm"><option value="asked">출제 횟수순</option><option value="accuracy">정답률 낮은 순</option><option value="wrong">오답 횟수순</option><option value="recent">최근 오답순</option></select></div>
+  <div id="quiz-usage-stats-list" class="space-y-3"></div>
+  <button onclick="closeQuizUsageStats()" class="w-full pixel-btn bg-slate-200 py-3 rounded-lg">닫기</button>
  </div>
 </div>
 
 <!-- 승리 모달 -->
 <div id="victory-modal" class="fixed inset-0 bg-slate-900/80 z-[70] hidden items-center justify-center p-4">
- <div class="modal-card pixel-box bg-white max-w-md w-full p-8 rounded-2xl text-center space-y-5 border-amber-400"><div class="text-7xl animate-bounce">👑</div><h2 class="text-3xl font-bold text-amber-800">탐험 성공!</h2><p id="winner-name-display" class="text-xl font-bold"></p><p class="text-xs text-slate-600">축하합니다! 국어 문법 보물 상자에 가장 먼저 도착했습니다!</p><button type="button" id="restart-from-victory-btn" class="w-full pixel-btn bg-amber-300 py-3 font-bold rounded-xl">🎮 게임 다시 하기</button></div>
+ <div class="modal-card pixel-box bg-white max-w-md w-full p-8 rounded-2xl text-center space-y-5 border-amber-400"><div class="text-7xl animate-bounce">👑</div><h2 class="text-3xl font-bold text-amber-800">탐험 성공!</h2><p id="winner-name-display" class="text-xl font-bold"></p><p class="text-xs text-slate-600">축하합니다! 국어 문법 보물 상자에 가장 먼저 도착했습니다!</p><button type="button" onclick="openGameStats()" class="w-full pixel-btn bg-purple-200 py-3 font-bold rounded-xl">📊 게임 결과 및 학습 통계</button><button type="button" id="restart-from-victory-btn" class="w-full pixel-btn bg-amber-300 py-3 font-bold rounded-xl">🎮 게임 다시 하기</button></div>
+</div>
+
+<!-- 게임 결과 및 통계 모달 -->
+<div id="stats-modal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-[75] hidden items-center justify-center p-4">
+ <div class="modal-card pixel-box bg-white max-w-2xl w-full p-6 rounded-2xl space-y-4 border-purple-400 max-h-[90vh] overflow-y-auto">
+  <div class="flex justify-between items-center"><h3 class="text-xl font-bold text-purple-900">📊 게임 결과 및 학습 통계</h3><button onclick="closeGameStats()" class="pixel-btn bg-slate-200 px-3 py-2 rounded">✕</button></div>
+  <div id="stats-summary" class="grid grid-cols-2 sm:grid-cols-4 gap-2"></div>
+  <div><h4 class="font-bold text-pink-800 mb-2">🏅 팀별 결과</h4><div id="stats-team-table" class="space-y-2"></div></div>
+  <div><h4 class="font-bold text-pink-800 mb-2">📚 문법 영역별 정답률</h4><div id="stats-category-table" class="space-y-2"></div></div>
+  <div class="flex flex-wrap gap-2"><button onclick="openWrongAnswerReview()" class="flex-1 pixel-btn bg-rose-200 py-3 rounded-lg font-bold">❌ 오답 다시 풀기</button><button onclick="closeGameStats()" class="flex-1 pixel-btn bg-slate-200 py-3 rounded-lg">닫기</button></div>
+ </div>
+</div>
+
+<!-- 오답 다시 풀기 모달 -->
+<div id="wrong-review-modal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-[76] hidden items-center justify-center p-4">
+ <div class="modal-card pixel-box bg-white max-w-2xl w-full p-6 rounded-2xl space-y-4 border-rose-400 max-h-[90vh] overflow-y-auto">
+  <div class="flex justify-between items-center gap-2"><h3 class="text-xl font-bold text-rose-900">❌ 오답 다시 풀기</h3><button onclick="closeWrongAnswerReview()" class="pixel-btn bg-slate-200 px-3 py-2 rounded">✕</button></div>
+  <p id="wrong-review-summary" class="text-sm text-slate-600"></p>
+  <div id="wrong-review-list" class="space-y-4"></div>
+  <button onclick="closeWrongAnswerReview()" class="w-full pixel-btn bg-slate-200 py-3 rounded-lg">닫기</button>
+ </div>
 </div>
 
 <script>
@@ -218,6 +276,14 @@ function setCloudStatus(message, colorClass) {
     return;
   }
 
+  // 다운로드한 HTML을 file://로 직접 열면 브라우저의 보안 정책상
+  // Firebase 모듈을 불러오지 못할 수 있습니다. 이 경우 게임은 로컬 저장으로 실행하고,
+  // 공용 서버 동기화는 웹 호스팅 주소(https://)에서 사용하도록 안내합니다.
+  if (location.protocol === 'file:') {
+    setCloudStatus('💾 로컬 파일 실행 중 · 공용 서버는 웹 주소에서 사용', 'bg-amber-100 text-amber-900 border-amber-300');
+    return;
+  }
+
   try {
     setCloudStatus('☁️ 서버 연결 중…', 'bg-sky-100 text-sky-900 border-sky-300');
 
@@ -233,7 +299,7 @@ function setCloudStatus(message, colorClass) {
     const { getAuth, signInAnonymously } = authSdk;
     const {
       getFirestore, collection, doc, setDoc, deleteDoc,
-      onSnapshot, getDocs, writeBatch
+      onSnapshot, getDocs, writeBatch, runTransaction
     } = firestoreSdk;
 
     const app = initializeApp(firebaseConfig);
@@ -251,8 +317,33 @@ function setCloudStatus(message, colorClass) {
       await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'quizzes', String(quiz.id)), payload);
     };
 
+    window.updateQuizInCloud = async (quiz) => {
+      const payload = { ...quiz, timestamp: Date.now() };
+      await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'quizzes', String(quiz.id)), payload);
+    };
+
     window.deleteQuizFromCloud = async (id) => {
       await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'quizzes', String(id)));
+    };
+
+    // 문항별 누적 통계는 트랜잭션으로 갱신해 여러 기기에서 동시에 게임해도 수치가 덮어써지지 않게 합니다.
+    window.recordQuizUsageInCloud = async (quizId, isCorrect, wrongRecord) => {
+      const ref = doc(db, 'artifacts', appId, 'public', 'data', 'quizzes', String(quizId));
+      await runTransaction(db, async (transaction) => {
+        const snapshot = await transaction.get(ref);
+        if (!snapshot.exists()) return;
+        const data = snapshot.data();
+        const current = data.usageStats || {};
+        const wrongAnswers = Array.isArray(current.wrongAnswers) ? [...current.wrongAnswers] : [];
+        if (!isCorrect && wrongRecord) wrongAnswers.push(wrongRecord);
+        transaction.update(ref, {
+          usageStats: {
+            asked: Number(current.asked || 0) + 1,
+            correct: Number(current.correct || 0) + (isCorrect ? 1 : 0),
+            wrongAnswers
+          }
+        });
+      });
     };
 
     window.uploadLocalQuizzesToCloud = async (items) => {
@@ -332,6 +423,7 @@ const DEFAULT_QUIZZES=[
 ];
 
 let quizBank=[],numPlayers=2,players=[],currentTurnIndex=0,isDiceRolling=false,selectedOptionIndex=null,currentActiveQuiz=null;
+let detailQuizId=null,editingQuizId=null,selectedGameCategory='all',gameFinished=false;
 let currentEventType='normal',timerInterval=null,timerLeft=5,goblinOpponentIndex=null,goblinQuiz=null;
 let diceInterval=null,actionTimeout=null;
 const PLAYER_AVATARS=['🐰','🐣','🐱','🦄'],PLAYER_COLORS=['#e11d48','#2563eb','#059669','#d97706'],PLAYER_NAMES_DEFAULT=['1팀 (토끼)','2팀 (병아리)','3팀 (고양이)','4팀 (유니콘)'];
@@ -355,10 +447,33 @@ function hideModal(id){
 }
 function switchTab(tab){$('game-tab').classList.toggle('hidden',tab!=='game');$('creator-tab').classList.toggle('hidden',tab!=='creator')}
 function escapeHtml(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]))}
-function loadQuizzesFromStorage(){try{const raw=localStorage.getItem('korean_grammar_quizzes');quizBank=raw?JSON.parse(raw):[...DEFAULT_QUIZZES];if(!Array.isArray(quizBank))throw Error('invalid')}catch(e){quizBank=[...DEFAULT_QUIZZES]}saveQuizzesToStorage()}
-function saveQuizzesToStorage(){localStorage.setItem('korean_grammar_quizzes',JSON.stringify(quizBank));updateQuizBadge()}
-function updateQuizBadge(){$('quiz-count-badge').textContent=`${quizBank.length}개 저장됨`;$('active-quiz-info').textContent=`퀴즈 ${quizBank.length}개 장전됨`}
-let detailQuizId=null;
+let quizStorageAvailable = true;
+function loadQuizzesFromStorage(){
+ try {
+  const raw=window.localStorage ? localStorage.getItem('korean_grammar_quizzes') : null;
+  quizBank=raw?JSON.parse(raw):[...DEFAULT_QUIZZES];
+  if(!Array.isArray(quizBank)) throw new Error('저장된 퀴즈 데이터 형식이 올바르지 않습니다.');
+ } catch(e) {
+  console.warn('저장된 퀴즈를 읽지 못해 기본 문제로 시작합니다:',e);
+  quizBank=[...DEFAULT_QUIZZES];
+  quizStorageAvailable=false;
+ }
+ quizBank=quizBank.map(q=>({...q,usageStats:q.usageStats||{asked:0,correct:0,wrongAnswers:[]}}));
+ saveQuizzesToStorage();
+}
+function saveQuizzesToStorage(){
+ try {
+  if(!window.localStorage) throw new Error('브라우저 저장 기능을 사용할 수 없습니다.');
+  localStorage.setItem('korean_grammar_quizzes',JSON.stringify(quizBank));
+  quizStorageAvailable=true;
+ } catch(e) {
+  quizStorageAvailable=false;
+  console.warn('브라우저 저장소에 기록하지 못했습니다. 현재 화면에서만 유지됩니다:',e);
+  setCloudStatus('⚠️ 브라우저 저장 제한 · 새로고침 시 초기화될 수 있음','bg-amber-100 text-amber-900 border-amber-300');
+ }
+ updateQuizBadge();
+}
+function updateQuizBadge(){$('quiz-count-badge').textContent=`${quizBank.length}개 저장됨`;const info=$('active-quiz-info');if(info)info.textContent=`퀴즈 ${quizBank.length}개 장전됨`;if($('game-category-filter'))updateGameCategoryCount()}
 function renderQuizList(){
  const box=$('quiz-list-container');box.innerHTML='';
  if(!quizBank.length){box.innerHTML='<p class="text-center text-slate-400 py-8">등록된 퀴즈가 없습니다.</p>';return}
@@ -367,8 +482,9 @@ function renderQuizList(){
   card.className='pixel-box-sm bg-pink-50 p-3 rounded-lg text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3';
   const info=document.createElement('div');info.className='min-w-0 space-y-1';
   info.innerHTML=`<b class="text-pink-800">문제 ${String(quizBank.length-i).padStart(2,'0')} · ${escapeHtml(q.category||'분야 미지정')}</b><p class="text-slate-600">출제자: ${escapeHtml(q.author||'익명')}</p>`;
-  const button=document.createElement('button');button.type='button';button.className='pixel-btn bg-emerald-200 px-4 py-2 rounded-lg font-bold shrink-0';button.textContent='🔎 문제 확인';button.onclick=()=>openQuizDetail(q.id);
-  card.append(info,button);box.appendChild(card);
+  const actions=document.createElement('div');actions.className='flex flex-wrap gap-2 shrink-0';
+  const button=document.createElement('button');button.type='button';button.className='pixel-btn bg-emerald-200 px-3 py-2 rounded-lg font-bold';button.textContent='🔎 문제 확인';button.onclick=()=>openQuizDetail(q.id);
+  actions.append(button);card.append(info,actions);box.appendChild(card);
  })
 }
 function openQuizDetail(id){
@@ -388,15 +504,94 @@ function openQuizDetail(id){
  showModal('quiz-detail-modal');
 }
 function closeQuizDetail(){hideModal('quiz-detail-modal');detailQuizId=null}
-function deleteQuizFromDetail(){if(detailQuizId===null)return;const id=detailQuizId;if(!confirm('이 퀴즈를 삭제할까요?'))return;closeQuizDetail();deleteQuiz(id,true)}
+function openQuizEdit(){
+ const q=quizBank.find(item=>String(item.id)===String(detailQuizId));if(!q)return;
+ editingQuizId=q.id;
+ $('edit-quiz-author').value=q.author||'';$('edit-quiz-category').value=q.category||'단어와 형태소';$('edit-quiz-question').value=q.question||'';
+ (q.options||['','','','']).forEach((v,i)=>$('edit-opt-'+i).value=v||'');$('edit-quiz-answer').value=String(Number(q.answer)||0);$('edit-quiz-explanation').value=q.explanation||'';
+ showModal('quiz-edit-modal');
+}
+function closeQuizEdit(){hideModal('quiz-edit-modal');editingQuizId=null}
+async function saveQuizEdit(){
+ const old=quizBank.find(item=>String(item.id)===String(editingQuizId));if(!old)return;
+ const question=$('edit-quiz-question').value.trim(),options=[0,1,2,3].map(i=>$('edit-opt-'+i).value.trim()),explanation=$('edit-quiz-explanation').value.trim();
+ if(!question||options.some(v=>!v)||!explanation){alert('문제, 선택지 4개, 해설을 모두 입력해 주세요.');return}
+ const updated={...old,author:$('edit-quiz-author').value.trim()||'익명 출제자',category:$('edit-quiz-category').value,question,options,answer:Number($('edit-quiz-answer').value),explanation};
+ quizBank=quizBank.map(q=>String(q.id)===String(editingQuizId)?updated:q);saveQuizzesToStorage();renderQuizList();closeQuizEdit();closeQuizDetail();
+ try{if(window.updateQuizInCloud)await window.updateQuizInCloud(updated);alert('퀴즈를 수정했습니다. 공용 서버에도 반영했습니다.')}catch(e){console.error('퀴즈 수정 서버 반영 실패:',e);alert('이 기기에는 수정 내용을 저장했지만 공용 서버 반영에 실패했습니다. Firebase 연결을 확인해 주세요.')}
+}
+function deleteQuizFromDetail(){if(detailQuizId===null)return;const id=detailQuizId;if(!confirm('이 퀴즈를 삭제할까요? 공용 서버에서도 삭제됩니다.'))return;closeQuizDetail();deleteQuiz(id,true)}
 async function deleteQuiz(id,confirmed=false){if(!confirmed&&!confirm('이 퀴즈를 삭제할까요?'))return;quizBank=quizBank.filter(q=>String(q.id)!==String(id));saveQuizzesToStorage();renderQuizList();try{if(window.deleteQuizFromCloud)await window.deleteQuizFromCloud(id)}catch(e){console.error('퀴즈 서버 삭제 실패:',e);alert('이 컴퓨터에서는 삭제했지만 공용 서버 삭제에는 실패했습니다. 서버 연결을 확인해 주세요.')}}
 async function resetQuizzesToDefault(){if(!confirm('기본 문법 퀴즈 18개로 초기화할까요? 서버에 있는 학급 공용 문제도 모두 기본 문제로 바뀝니다.'))return;quizBank=[...DEFAULT_QUIZZES];saveQuizzesToStorage();renderQuizList();try{if(window.resetQuizCloud)await window.resetQuizCloud(quizBank);else if(window.uploadLocalQuizzesToCloud)await window.uploadLocalQuizzesToCloud(quizBank);alert('기본 문제로 초기화했습니다.')}catch(e){console.error(e);alert('서버 초기화에 실패했습니다. 인터넷 연결과 Firebase 보안 규칙을 확인해 주세요.')}}
-function exportQuizzes(){const blob=new Blob([JSON.stringify(quizBank,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='국어_문법_퀴즈.json';a.click();URL.revokeObjectURL(a.href)}
+function isDefaultQuizItem(quiz){
+ return DEFAULT_QUIZZES.some(base=>String(base.id)===String(quiz.id)&&base.question===quiz.question);
+}
+function exportQuizzes(excludeDefaults=false){
+ const items=excludeDefaults?quizBank.filter(q=>!isDefaultQuizItem(q)):quizBank;
+ if(!items.length){alert('내보낼 퀴즈가 없습니다.');return}
+ const blob=new Blob([JSON.stringify(items,null,2)],{type:'application/json'});
+ const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;
+ a.download=excludeDefaults?'국어_문법_퀴즈_기본문제제외.json':'국어_문법_퀴즈_전체.json';
+ document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+function getQuizUsageStats(quiz){
+ const raw=quiz.usageStats||{};const asked=Number(raw.asked||0),correct=Number(raw.correct||0);
+ const wrongAnswers=Array.isArray(raw.wrongAnswers)?raw.wrongAnswers:[];
+ return {asked,correct,wrongAnswers,wrong:Math.max(0,asked-correct),accuracy:asked?Math.round(correct/asked*100):0};
+}
+function openQuizUsageStats(){
+ $('quiz-stats-search').value='';$('quiz-stats-sort').value='asked';renderQuizUsageStats();showModal('quiz-usage-stats-modal');
+}
+function closeQuizUsageStats(){hideModal('quiz-usage-stats-modal')}
+function renderQuizUsageStats(){
+ const search=($('quiz-stats-search')?.value||'').trim().toLowerCase();
+ const sort=$('quiz-stats-sort')?.value||'asked';
+ let rows=quizBank.map(q=>({quiz:q,stats:getQuizUsageStats(q)})).filter(x=>!search||[x.quiz.question,x.quiz.author,x.quiz.category].some(v=>String(v||'').toLowerCase().includes(search)));
+ rows.sort((a,b)=>sort==='accuracy'?(a.stats.accuracy-b.stats.accuracy||b.stats.asked-a.stats.asked):sort==='wrong'?(b.stats.wrong-a.stats.wrong):sort==='recent'?((b.stats.wrongAnswers.at(-1)?.timestamp||0)-(a.stats.wrongAnswers.at(-1)?.timestamp||0)):b.stats.asked-a.stats.asked);
+ const asked=rows.reduce((n,x)=>n+x.stats.asked,0),correct=rows.reduce((n,x)=>n+x.stats.correct,0),wrong=rows.reduce((n,x)=>n+x.stats.wrong,0),accuracy=asked?Math.round(correct/asked*100):0;
+ $('quiz-usage-stats-summary').innerHTML='';
+ [['등록 문항',quizBank.length+'개'],['누적 출제',asked+'회'],['정답',correct+'회'],['전체 정답률',accuracy+'%']].forEach(([label,value])=>{const el=document.createElement('div');el.className='bg-violet-50 border border-violet-200 rounded-lg p-3 text-center';el.innerHTML=`<b class="block text-xl text-violet-900">${escapeHtml(value)}</b><span class="text-xs text-slate-600">${escapeHtml(label)}</span>`;$('quiz-usage-stats-summary').appendChild(el)});
+ const box=$('quiz-usage-stats-list');box.innerHTML='';
+ if(!rows.length){box.innerHTML='<p class="text-center text-slate-400 py-8">검색 결과가 없습니다.</p>';return}
+ rows.forEach(({quiz,stats},index)=>{
+  const card=document.createElement('article');card.className='border-2 border-violet-100 rounded-xl p-3 space-y-2';
+  const head=document.createElement('div');head.className='flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2';
+  const left=document.createElement('div');left.className='min-w-0';
+  const title=document.createElement('p');title.className='font-bold text-sm text-slate-800';title.textContent=`${index+1}. ${quiz.question}`;
+  const meta=document.createElement('p');meta.className='text-xs text-slate-500 mt-1';meta.textContent=`${quiz.category||'분야 미지정'} · 출제자: ${quiz.author||'익명'}`;left.append(title,meta);
+  const metrics=document.createElement('div');metrics.className='grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs shrink-0';
+  [['출제',stats.asked+'회'],['정답',stats.correct+'회'],['정답률',stats.accuracy+'%'],['오답',stats.wrong+'회']].forEach(([k,v])=>{const m=document.createElement('div');m.className='bg-slate-50 rounded p-2';m.innerHTML=`<b class="block text-sm">${escapeHtml(v)}</b><span class="text-slate-500">${escapeHtml(k)}</span>`;metrics.appendChild(m)});
+  head.append(left,metrics);card.appendChild(head);
+  const details=document.createElement('details');details.className='text-xs';const summary=document.createElement('summary');summary.className='cursor-pointer text-rose-700 font-bold py-1';summary.textContent=`❌ 오답 문항 기록 보기 (${stats.wrongAnswers.length}건)`;details.appendChild(summary);
+  if(!stats.wrongAnswers.length){const p=document.createElement('p');p.className='text-slate-400 py-2';p.textContent=stats.asked?'누적 오답이 없습니다.':'아직 게임에 출제되지 않은 문제입니다.';details.appendChild(p)}
+  else {const list=document.createElement('div');list.className='space-y-2 mt-2';[...stats.wrongAnswers].sort((a,b)=>(b.timestamp||0)-(a.timestamp||0)).forEach(w=>{const item=document.createElement('div');item.className='bg-rose-50 border border-rose-100 rounded-lg p-2';const when=w.timestamp?new Date(w.timestamp).toLocaleString('ko-KR'):'시간 정보 없음';const chosen=w.timeout?'시간 초과':(w.chosenOption||'선택 정보 없음');item.textContent=`${when} · ${w.player||'학생 정보 없음'} · 선택한 답: ${chosen} · 정답: ${w.correctOption||'정답 정보 없음'}`;list.appendChild(item)});details.appendChild(list)}
+  card.appendChild(details);box.appendChild(card);
+ });
+}
+function recordQuizUsage(quiz,isCorrect,chosenIndex,player){
+ if(!quiz)return;
+ const target=quizBank.find(q=>String(q.id)===String(quiz.id));if(!target)return;
+ if(!target.usageStats)target.usageStats={asked:0,correct:0,wrongAnswers:[]};
+ target.usageStats.asked=Number(target.usageStats.asked||0)+1;
+ target.usageStats.correct=Number(target.usageStats.correct||0)+(isCorrect?1:0);
+ let wrongRecord=null;
+ if(!isCorrect){wrongRecord={timestamp:Date.now(),player:player?.name||'학생',chosenOption:chosenIndex===-1?'시간 초과':(quiz.options||[])[chosenIndex]||'선택 정보 없음',correctOption:(quiz.options||[])[Number(quiz.answer)]||'정답 정보 없음',timeout:chosenIndex===-1};target.usageStats.wrongAnswers=Array.isArray(target.usageStats.wrongAnswers)?target.usageStats.wrongAnswers:[];target.usageStats.wrongAnswers.push(wrongRecord)}
+ saveQuizzesToStorage();
+ if(window.recordQuizUsageInCloud){window.recordQuizUsageInCloud(quiz.id,isCorrect,wrongRecord).catch(error=>{console.error('문항별 통계 서버 저장 실패:',error);setCloudStatus('⚠️ 통계 서버 저장 실패','bg-rose-100 text-rose-900 border-rose-300')})}
+}
 function openImportModal(){$('import-json-text').value='';showModal('import-modal')}
 function closeImportModal(){hideModal('import-modal')}
 async function importQuizzesFromJSON(){try{const arr=JSON.parse($('import-json-text').value);if(!Array.isArray(arr))throw Error();let added=[];arr.forEach(q=>{if(q.question&&Array.isArray(q.options)&&q.options.length===4&&Number.isInteger(Number(q.answer))&&Number(q.answer)>=0&&Number(q.answer)<=3){const item={...q,id:Date.now()+Math.random(),author:q.author||'익명',category:q.category||'단어와 형태소',answer:Number(q.answer),explanation:q.explanation||''};quizBank.unshift(item);added.push(item)}});if(!added.length)throw Error();saveQuizzesToStorage();renderQuizList();closeImportModal();if(window.uploadLocalQuizzesToCloud)await window.uploadLocalQuizzesToCloud(added);alert(`${added.length}개 퀴즈를 추가했습니다.${window.addQuizToCloud?' 공용 서버에 반영했습니다.':' (현재 로컬 저장 상태입니다.)'}`)}catch(e){console.error(e);alert('JSON 형식 또는 퀴즈 항목을 확인해 주세요. 선택지 4개와 정답 번호(0~3)가 필요합니다. 서버 저장 실패 여부도 확인해 주세요.')}}
 $('quiz-form').addEventListener('submit',async e=>{e.preventDefault();const q={id:Date.now(),author:$('quiz-author').value.trim()||'익명 출제자',category:$('quiz-category').value,question:$('quiz-question').value.trim(),options:[0,1,2,3].map(i=>$('opt-'+i).value.trim()),answer:Number($('quiz-answer').value),explanation:$('quiz-explanation').value.trim()};quizBank.unshift(q);saveQuizzesToStorage();renderQuizList();try{if(window.addQuizToCloud){await window.addQuizToCloud(q);setCloudStatus('☁️ 실시간 공유 중','bg-emerald-100 text-emerald-900 border-emerald-300')}}catch(err){console.error('퀴즈 서버 저장 실패:',err);setCloudStatus('⚠️ 서버 저장 실패','bg-rose-100 text-rose-900 border-rose-300');alert('문제는 이 컴퓨터에 임시 저장했지만 공용 서버 저장에는 실패했습니다. Firebase 설정과 보안 규칙을 확인해 주세요.')}['quiz-question','opt-0','opt-1','opt-2','opt-3','quiz-explanation'].forEach(id=>$(id).value='');playSound('correct')});
 
+function getGameQuizzes(){
+ const filtered=selectedGameCategory==='all'?quizBank:quizBank.filter(q=>(q.category||'단어와 형태소')===selectedGameCategory);
+ return filtered;
+}
+function updateGameCategoryCount(){
+ const select=$('game-category-filter');if(!select)return;selectedGameCategory=select.value;
+ const count=getGameQuizzes().length;$('game-category-count').textContent=selectedGameCategory==='all'?`전체 ${count}개 문제가 출제됩니다.`:`선택 영역의 문제 ${count}개가 출제됩니다.`;
+}
 function setupPlayerSetupInputs(){const box=$('player-names-input');box.innerHTML='';for(let i=2;i<=4;i++)$('pcount-'+i).className='pixel-btn px-4 py-2 rounded-lg font-bold '+(i===numPlayers?'bg-purple-300':'bg-white');for(let i=0;i<numPlayers;i++){const d=document.createElement('label');d.className='text-xs font-bold';d.innerHTML=`${PLAYER_AVATARS[i]} ${i+1}팀 이름<input id="player-name-${i}" value="${PLAYER_NAMES_DEFAULT[i]}" class="mt-1 w-full border border-pink-200 rounded p-2 text-xs">`;box.appendChild(d)}}
 function setPlayerCount(n){numPlayers=n;setupPlayerSetupInputs()}
 function initBoardMap(){
@@ -405,7 +600,10 @@ function initBoardMap(){
 }
 function startBoardGame(){
  if(!quizBank.length){quizBank=[...DEFAULT_QUIZZES];saveQuizzesToStorage()}
- players=Array.from({length:numPlayers},(_,i)=>({id:i,name:$('player-name-'+i).value.trim()||PLAYER_NAMES_DEFAULT[i],avatar:PLAYER_AVATARS[i],color:PLAYER_COLORS[i],pos:0,correctCount:0,slimeTrapped:false}));
+ selectedGameCategory=$('game-category-filter')?.value||'all';const available=getGameQuizzes();
+ if(!available.length){alert('선택한 문법 영역에 등록된 문제가 없습니다. 다른 영역을 선택하거나 문제를 먼저 등록해 주세요.');return}
+ gameFinished=false;
+ players=Array.from({length:numPlayers},(_,i)=>({id:i,name:$('player-name-'+i).value.trim()||PLAYER_NAMES_DEFAULT[i],avatar:PLAYER_AVATARS[i],color:PLAYER_COLORS[i],pos:0,correctCount:0,wrongCount:0,answeredCount:0,wrongAnswers:[],categoryStats:{},slimeTrapped:false}));
  currentTurnIndex=0;isDiceRolling=false;selectedOptionIndex=null;currentEventType='normal';$('dice-visual').textContent='🎲';$('roll-btn').disabled=false;initBoardMap();$('game-setup-panel').classList.add('hidden');$('game-setup-panel').style.display='none';$('game-play-panel').classList.remove('hidden');$('game-play-panel').style.display='grid';renderBoard();updateTurnUI();updateScoreboard()
 }
 function confirmRestartGame(){
@@ -423,11 +621,13 @@ function resetGameToSetup(){
  selectedOptionIndex=null;
  currentActiveQuiz=null;
  currentEventType='normal';
+ gameFinished=false;
  goblinOpponentIndex=null;
  goblinQuiz=null;
  timerLeft=5;
  // 열려 있는 게임 모달과 타이머를 닫습니다.
- ['quiz-modal','result-modal','goblin-modal','victory-modal'].forEach(hideModal);
+ ['quiz-modal','result-modal','goblin-modal','victory-modal','stats-modal','wrong-review-modal','quiz-edit-modal'].forEach(hideModal);
+ editingQuizId=null;
  const timer=$('trap-timer');
  if(timer){timer.classList.add('hidden');timer.classList.remove('timer-pulse');timer.textContent='💣 5초';}
  const dice=$('dice-visual');
@@ -485,7 +685,7 @@ function triggerTrapEvent(p,tile){
 }
 function updateAfterMove(p){updatePlayerPawnsOnBoard();updateTurnUI();updateScoreboard()}
 function openQuizModal(){
- if(!quizBank.length)quizBank=[...DEFAULT_QUIZZES];currentActiveQuiz=quizBank[Math.floor(Math.random()*quizBank.length)];selectedOptionIndex=null;
+ const pool=getGameQuizzes();if(!pool.length){alert('선택한 영역에 출제할 문제가 없습니다.');nextTurn();return}currentActiveQuiz=pool[Math.floor(Math.random()*pool.length)];selectedOptionIndex=null;
  $('modal-category').textContent=currentEventType==='swamp'?'🌿 어휘 늪 탈출 퀴즈':currentEventType==='bomb'?'💣 시간 폭탄 퀴즈':currentActiveQuiz.category;
  $('modal-author').textContent=`출제: ${currentActiveQuiz.author}`;$('modal-question').textContent=currentActiveQuiz.question;
  $('quiz-heading').textContent=currentEventType==='swamp'?'[ 늪에서 탈출하려면 정답을 맞혀라! ]':currentEventType==='bomb'?'[ 5초 안에 정답을 선택하라! ]':'[ 국어 문법 퀴즈 ]';
@@ -497,9 +697,16 @@ function openQuizModal(){
  if(currentEventType==='bomb'){timerLeft=5;$('trap-timer').textContent='💣 '+timerLeft+'초';$('trap-timer').classList.remove('hidden');$('trap-timer').classList.add('timer-pulse');timerInterval=setInterval(()=>{timerLeft--;$('trap-timer').textContent='💣 '+timerLeft+'초';if(timerLeft<=0){clearInterval(timerInterval);$('trap-timer').textContent='💥 폭발!';submitQuizAnswer(true)}},1000)}
 }
 function selectQuizOption(i){selectedOptionIndex=i;document.querySelectorAll('.quiz-option').forEach((b,j)=>{b.classList.toggle('bg-purple-200',i===j);b.classList.toggle('border-purple-500',i===j)});$('submit-quiz-btn').disabled=false;$('submit-quiz-btn').className='w-full pixel-btn bg-emerald-300 py-3 font-bold rounded-xl'}
+function recordQuizAttempt(player,quiz,correct,chosenIndex,timeout=false){
+ if(!player)return;player.answeredCount=(player.answeredCount||0)+1;
+ const category=quiz.category||'분야 미지정';if(!player.categoryStats)player.categoryStats={};
+ if(!player.categoryStats[category])player.categoryStats[category]={total:0,correct:0};
+ player.categoryStats[category].total++;if(correct){player.categoryStats[category].correct++;}
+ else{player.wrongCount=(player.wrongCount||0)+1;if(!player.wrongAnswers)player.wrongAnswers=[];player.wrongAnswers.push({quiz:{...quiz,options:[...(quiz.options||[])]},chosenIndex:timeout?-1:chosenIndex,timeout,reviewed:false});}
+}
 function submitQuizAnswer(timeout=false){
  if(!timeout&&selectedOptionIndex===null)return;if(!currentActiveQuiz)return;clearInterval(timerInterval);$('trap-timer').classList.add('hidden');hideModal('quiz-modal');
- const correct=!timeout&&selectedOptionIndex===Number(currentActiveQuiz.answer),p=players[currentTurnIndex];$('result-explanation').textContent=currentActiveQuiz.explanation||'해설이 등록되지 않았습니다.';
+ const correct=!timeout&&selectedOptionIndex===Number(currentActiveQuiz.answer),p=players[currentTurnIndex];recordQuizAttempt(p,currentActiveQuiz,correct,selectedOptionIndex,timeout);recordQuizUsage(currentActiveQuiz,correct,timeout?-1:selectedOptionIndex,p);$('result-explanation').textContent=currentActiveQuiz.explanation||'해설이 등록되지 않았습니다.';
  if(correct){p.correctCount++;playSound('correct');$('result-icon').textContent='⭕';$('result-title').textContent='정답입니다!';$('result-title').className='text-2xl font-bold text-emerald-600';
   if(currentEventType==='swamp'){p.pos=Math.min(29,p.pos+2);$('result-action-msg').textContent='🌿 늪 탈출 성공! 보상으로 2칸 전진합니다!'}
   else if(currentEventType==='bomb')$('result-action-msg').textContent='💣 폭탄 해체 성공! 무사히 통과합니다!'
@@ -513,7 +720,7 @@ function submitQuizAnswer(timeout=false){
 }
 function closeResultModal(){hideModal('result-modal');const p=players[currentTurnIndex];if(p.pos>=29)triggerVictory(p);else{currentEventType='normal';nextTurn()}}
 function openGoblinDuel(){
- currentEventType='goblin';goblinOpponentIndex=(currentTurnIndex+1)%players.length;goblinQuiz=quizBank[Math.floor(Math.random()*quizBank.length)];
+ currentEventType='goblin';goblinOpponentIndex=(currentTurnIndex+1)%players.length;const duelPool=getGameQuizzes();if(!duelPool.length){alert('선택한 영역에 대결 문제가 없습니다.');nextTurn();return}goblinQuiz=duelPool[Math.floor(Math.random()*duelPool.length)];
  const a=players[currentTurnIndex],b=players[goblinOpponentIndex];$('goblin-opponent-name').textContent=`${a.name} VS ${b.name}`;
  $('goblin-current-win').textContent=`🏆 ${a.name} 승리`; $('goblin-opponent-win').textContent=`👹 ${b.name} 승리`;
  $('goblin-question').textContent=goblinQuiz.question;$('goblin-options').innerHTML='';
@@ -528,12 +735,54 @@ function finishGoblinDuel(who){
 }
 function cancelGoblinDuel(){hideModal('goblin-modal');currentEventType='normal';nextTurn()}
 function nextTurn(){currentTurnIndex=(currentTurnIndex+1)%numPlayers;isDiceRolling=false;updateTurnUI();updateScoreboard()}
-function triggerVictory(p){isDiceRolling=false;clearInterval(timerInterval);playSound('win');$('winner-name-display').textContent=`${p.avatar} ${p.name} 승리!`;showModal('victory-modal')}
+function triggerVictory(p){if(gameFinished)return;gameFinished=true;isDiceRolling=false;clearInterval(timerInterval);playSound('win');$('winner-name-display').textContent=`${p.avatar} ${p.name} 승리!`;showModal('victory-modal')}
+function openGameStats(){
+ const totalAnswered=players.reduce((sum,p)=>sum+(p.answeredCount||0),0),totalCorrect=players.reduce((sum,p)=>sum+(p.correctCount||0),0),totalWrong=players.reduce((sum,p)=>sum+(p.wrongCount||0),0);
+ const allWrong=players.reduce((sum,p)=>sum+(p.wrongAnswers||[]).length,0),accuracy=totalAnswered?Math.round(totalCorrect/totalAnswered*100):0;
+ const summary=$('stats-summary');summary.innerHTML='';
+ [["풀이한 문제",totalAnswered],["정답",totalCorrect],["오답",totalWrong],["전체 정답률",accuracy+'%']].forEach(([label,value])=>{const card=document.createElement('div');card.className='bg-purple-50 border border-purple-200 rounded-lg p-3 text-center';const b=document.createElement('b');b.className='block text-xl text-purple-900';b.textContent=value;const small=document.createElement('span');small.className='text-xs text-slate-600';small.textContent=label;card.append(b,small);summary.appendChild(card)});
+ const teamBox=$('stats-team-table');teamBox.innerHTML='';
+ players.forEach(p=>{const pct=p.answeredCount?Math.round(p.correctCount/p.answeredCount*100):0;const row=document.createElement('div');row.className='border rounded-lg p-3 bg-white';const top=document.createElement('div');top.className='flex justify-between text-sm font-bold';const name=document.createElement('span');name.textContent=`${p.avatar} ${p.name}`;const score=document.createElement('span');score.textContent=`${p.correctCount}/${p.answeredCount} 정답 (${pct}%)`;top.append(name,score);const detail=document.createElement('p');detail.className='text-xs text-slate-500 mt-1';detail.textContent=`현재 위치 ${p.pos}번 칸 · 오답 ${p.wrongCount||0}개`;row.append(top,detail);teamBox.appendChild(row)});
+ const cats={};players.forEach(p=>Object.entries(p.categoryStats||{}).forEach(([name,v])=>{if(!cats[name])cats[name]={total:0,correct:0};cats[name].total+=v.total;cats[name].correct+=v.correct}));
+ const catBox=$('stats-category-table');catBox.innerHTML='';const catNames=Object.keys(cats);
+ if(!catNames.length){catBox.innerHTML='<p class="text-sm text-slate-500">아직 기록된 퀴즈 풀이가 없습니다.</p>'}else catNames.forEach(name=>{const v=cats[name],pct=v.total?Math.round(v.correct/v.total*100):0;const row=document.createElement('div');row.className='space-y-1';const line=document.createElement('div');line.className='flex justify-between text-xs';const label=document.createElement('b');label.textContent=name;const value=document.createElement('span');value.textContent=`${v.correct}/${v.total} (${pct}%)`;line.append(label,value);const bar=document.createElement('div');bar.className='h-3 bg-slate-100 rounded-full overflow-hidden';const fill=document.createElement('div');fill.className='h-full bg-emerald-400';fill.style.width=pct+'%';bar.appendChild(fill);row.append(line,bar);catBox.appendChild(row)});
+ const reviewBtn=document.querySelector('#stats-modal button[onclick="openWrongAnswerReview()"]');if(reviewBtn){reviewBtn.disabled=allWrong===0;reviewBtn.classList.toggle('opacity-50',allWrong===0);reviewBtn.textContent=allWrong?`❌ 오답 다시 풀기 (${allWrong}개)`:'❌ 다시 풀 오답이 없습니다'}
+ showModal('stats-modal');
+}
+function closeGameStats(){hideModal('stats-modal')}
+function openWrongAnswerReview(){
+ const items=[];players.forEach(p=>(p.wrongAnswers||[]).forEach((entry,index)=>items.push({player:p,entry,index})));
+ const box=$('wrong-review-list');box.innerHTML='';$('wrong-review-summary').textContent=items.length?`총 ${items.length}개의 오답이 있습니다. 각 문제를 다시 풀고 정답과 해설을 확인하세요.`:'다시 풀 오답이 없습니다.';
+ if(!items.length){const empty=document.createElement('p');empty.className='text-sm text-emerald-700 bg-emerald-50 p-3 rounded';empty.textContent='모든 문제를 잘 풀었어요!';box.appendChild(empty)}
+ items.forEach((item,idx)=>{
+  const q=item.entry.quiz,card=document.createElement('article');card.className='border-2 border-rose-200 rounded-xl p-4 space-y-3 bg-rose-50';
+  const meta=document.createElement('p');meta.className='text-xs text-rose-700 font-bold';meta.textContent=`${idx+1}. ${item.player.name} · ${q.category||'분야 미지정'}`;
+  const question=document.createElement('p');question.className='font-bold text-sm';question.textContent=q.question||'';
+  const options=document.createElement('div');options.className='grid grid-cols-1 gap-2';
+  const feedback=document.createElement('div');feedback.className='hidden rounded-lg p-3 text-sm';
+  (q.options||[]).forEach((opt,optIndex)=>{const btn=document.createElement('button');btn.type='button';btn.className='pixel-btn bg-white text-left p-3 rounded-lg text-sm';btn.textContent=`${optIndex+1}. ${opt}`;btn.addEventListener('click',()=>{
+    if(btn.dataset.locked==='1')return;Array.from(options.children).forEach(b=>{b.disabled=true;b.dataset.locked='1'});
+    const correct=optIndex===Number(q.answer);btn.classList.add(correct?'bg-emerald-200':'bg-rose-200');feedback.classList.remove('hidden');feedback.classList.add(correct?'bg-emerald-100':'bg-amber-100');feedback.textContent=(correct?'⭕ 다시 풀기에 성공했습니다! ':'❌ 정답은 '+(Number(q.answer)+1)+'번입니다. ')+(q.explanation||'해설이 등록되지 않았습니다.');
+  });options.appendChild(btn)});
+  const retry=document.createElement('button');retry.type='button';retry.className='text-xs underline text-sky-700';retry.textContent='다시 도전하기';retry.addEventListener('click',()=>{Array.from(options.children).forEach(b=>{b.disabled=false;b.dataset.locked='0';b.className='pixel-btn bg-white text-left p-3 rounded-lg text-sm'});feedback.className='hidden rounded-lg p-3 text-sm';feedback.textContent=''});
+  card.append(meta,question,options,feedback,retry);box.appendChild(card);
+ });
+ hideModal('stats-modal');showModal('wrong-review-modal');
+}
+function closeWrongAnswerReview(){hideModal('wrong-review-modal');showModal('stats-modal')}
 function restartGameFromVictory(){resetGameToSetup()}
-window.addEventListener('load',()=>{loadQuizzesFromStorage();renderQuizList();setupPlayerSetupInputs();initBoardMap();
+function initializeGamePage(){
+ try { loadQuizzesFromStorage(); } catch(e) { console.error('퀴즈 초기화 오류:',e); quizBank=[...DEFAULT_QUIZZES]; }
+ try { renderQuizList(); } catch(e) { console.error('퀴즈 목록 표시 오류:',e); }
+ try { setupPlayerSetupInputs(); } catch(e) { console.error('플레이어 설정 초기화 오류:',e); }
+ try { initBoardMap(); } catch(e) { console.error('보드판 초기화 오류:',e); }
+ const categorySelect=$('game-category-filter');
+ if(categorySelect){categorySelect.addEventListener('change',updateGameCategoryCount);try{updateGameCategoryCount()}catch(e){console.error('문법 영역 문제 수 표시 오류:',e)}}
  const restartBtn=$('restart-game-btn');if(restartBtn)restartBtn.addEventListener('click',resetGameToSetup);
  const victoryRestartBtn=$('restart-from-victory-btn');if(victoryRestartBtn)victoryRestartBtn.addEventListener('click',resetGameToSetup);
-});
+}
+if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',initializeGamePage,{once:true});
+else initializeGamePage();
 </script>
 </body>
 </html>
