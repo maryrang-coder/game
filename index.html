@@ -464,8 +464,9 @@ window.quizIdentityReady = (async function initFirebaseSync() {
       updateQuizErrorReportNotifications();
       if (window.resolveErrorReportsReady) window.resolveErrorReportsReady();
     }, (error) => {
+      // 오류 신고 연결 오류는 화면 상단 전역 알림으로 띄우지 않고 콘솔에만 기록합니다.
+      // 신고 건수는 '오류 신고 확인' 버튼의 배지로만 표시합니다.
       console.error('오류 신고 실시간 수신 실패:', error);
-      setCloudStatus('⚠️ 오류 신고 연결 실패', 'bg-rose-100 text-rose-900 border-rose-300');
       if (window.resolveErrorReportsReady) window.resolveErrorReportsReady();
     });
     // 현재 공용 퀴즈 컬렉션의 문서 수와 직렬화 기준 추정 용량을 조회합니다.
