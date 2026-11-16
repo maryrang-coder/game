@@ -25,6 +25,12 @@ body{background-color:#fff5f7;background-image:radial-gradient(#fbcfe8 20%,trans
 </style>
 </head>
 <body class="text-slate-800 min-h-screen flex flex-col">
+<!-- 새 오류 신고 전역 알림 -->
+<div id="quiz-error-global-alert" class="hidden fixed top-3 left-1/2 -translate-x-1/2 z-[120] w-[min(92vw,520px)] pointer-events-none">
+ <button type="button" onclick="openQuizErrorReports()" class="pointer-events-auto w-full pixel-box bg-rose-100 border-rose-500 text-rose-950 rounded-xl px-4 py-3 shadow-xl flex items-center justify-center gap-2 font-bold animate-pulse">
+  <span class="text-xl">🚩</span><span>새 오류 신고가 접수되었습니다.</span><span id="quiz-error-global-count" class="bg-rose-600 text-white rounded-full min-w-7 px-2 py-1 text-sm">0</span><span class="text-xs underline">확인하기</span>
+ </button>
+</div>
 <header class="bg-pink-200/90 backdrop-blur border-b-4 border-pink-400 p-4 sticky top-0 z-30 shadow-sm">
  <div class="max-w-6xl mx-auto flex flex-wrap justify-between items-center gap-4">
   <div class="flex items-center gap-3"><span class="text-3xl animate-bounce">🎀</span><div>
@@ -70,7 +76,7 @@ body{background-color:#fff5f7;background-image:radial-gradient(#fbcfe8 20%,trans
      <h4 class="font-bold text-violet-900 text-sm">📊 퀴즈 현황</h4>
      <div class="flex flex-wrap gap-2">
       <button type="button" onclick="openQuizUsageStats()" class="pixel-btn bg-violet-200 px-3 py-2 rounded text-xs">📈 문항별 누적 통계</button>
-      <button type="button" onclick="openQuizErrorReports()" class="pixel-btn bg-rose-200 px-3 py-2 rounded text-xs">🚩 오류 신고 확인</button>
+      <button type="button" onclick="openQuizErrorReports()" class="pixel-btn bg-rose-200 px-3 py-2 rounded text-xs inline-flex items-center gap-2">🚩 오류 신고 확인 <span id="quiz-error-report-badge" class="hidden bg-rose-600 text-white rounded-full px-2 py-1 font-bold">0</span></button>
      </div>
     </div>
     <div class="border-t border-amber-200 pt-3 space-y-2">
@@ -461,6 +467,7 @@ window.quizIdentityReady = (async function initFirebaseSync() {
       quizErrorReports = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
       quizErrorReports.sort((a, b) => Number(b.reportedAt || 0) - Number(a.reportedAt || 0));
       renderQuizErrorReports();
+      updateQuizErrorReportNotifications();
       if (window.resolveErrorReportsReady) window.resolveErrorReportsReady();
     }, (error) => {
       console.error('오류 신고 실시간 수신 실패:', error);
@@ -1019,7 +1026,12 @@ function renderQuizUsageStats(){
   (quiz.options||[]).slice(0,4).forEach((option,optIndex)=>{
    const line=document.createElement('div');line.className='grid grid-cols-[minmax(0,1fr)_auto] gap-2 items-start rounded-lg bg-slate-50 px-3 py-2 text-xs';
    const label=document.createElement('span');label.className='min-w-0 break-words';label.textContent=`${optIndex+1}번. ${option}`;
-   const count=document.createElement('b');count.className='text-rose-700 whitespace-nowrap';count.textContent=`${Number(stats.wrongCounts[String(optIndex+1)]||0)}회 오답`;
+   const count=document.createElement('b');
+   if(optIndex===Number(quiz.answer)){
+    count.className='text-emerald-700 whitespace-nowrap';count.textContent='✓ 정답';
+   }else{
+    count.className='text-rose-700 whitespace-nowrap';count.textContent=`${Number(stats.wrongCounts[String(optIndex+1)]||0)}회 오답`;
+   }
    line.append(label,count);optionsPanel.appendChild(line);
   });
   const timeout=document.createElement('p');timeout.className='text-[11px] text-slate-500 text-right';timeout.textContent=`시간 초과 ${Number(stats.wrongCounts['시간 초과']||0)}회 · 기타 ${Number(stats.wrongCounts['기타']||0)}회`;optionsPanel.appendChild(timeout);
@@ -1045,6 +1057,15 @@ function resumeQuizTimerAfterErrorReport(){
  clearInterval(timerInterval);timerInterval=setInterval(()=>{timerLeft--;$('trap-timer').textContent='⏱️ '+timerLeft+'초';saveGameProgress('quiz');if(timerLeft<=0){clearInterval(timerInterval);$('trap-timer').textContent='⏰ 시간 초과!';submitQuizAnswer(true)}},1000);
 }
 let quizErrorReports=[];
+function updateQuizErrorReportNotifications(){
+ const count=quizErrorReports.length;
+ const badge=$('quiz-error-report-badge');
+ const globalAlert=$('quiz-error-global-alert');
+ const globalCount=$('quiz-error-global-count');
+ if(badge){badge.textContent=String(count);badge.classList.toggle('hidden',count===0);}
+ if(globalCount)globalCount.textContent=String(count);
+ if(globalAlert)globalAlert.classList.toggle('hidden',count===0);
+}
 function renderQuizErrorReports(){
  const list=$('quiz-error-reports-list');if(!list)return;list.innerHTML='';
  if(!quizErrorReports.length){list.innerHTML='<p class="text-sm text-slate-400">접수된 신고가 없습니다.</p>';return;}
@@ -1075,7 +1096,7 @@ async function clearQuizErrorReports(){
  try{
   if(!window.clearQuizErrorReportsInCloud)throw new Error('Firebase 서버에 연결되지 않았습니다.');
   await window.clearQuizErrorReportsInCloud();
-  quizErrorReports=[];renderQuizErrorReports();alert('학급 공용 오류 신고를 모두 삭제했습니다.');
+  quizErrorReports=[];renderQuizErrorReports();updateQuizErrorReportNotifications();alert('학급 공용 오류 신고를 모두 삭제했습니다.');
  }catch(e){console.error('오류 신고 삭제 실패:',e);alert('오류 신고를 서버에서 삭제하지 못했습니다. Firebase 연결과 보안 규칙을 확인해 주세요.');}
 }
 function downloadWrongRateReport(){
