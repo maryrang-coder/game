@@ -260,7 +260,7 @@ body{background-color:#fff5f7;background-image:radial-gradient(#fbcfe8 20%,trans
    <label class="block text-xs font-bold">문법 주제<select id="edit-quiz-category" class="mt-1 w-full border-2 border-sky-200 rounded-lg p-2"><option>단어와 형태소</option><option>어근과 접사</option><option>단어의 종류</option><option>새말의 형성</option><option>기타</option></select></label>
   <label class="block text-xs font-bold">문제 지문<textarea id="edit-quiz-question" rows="3" class="mt-1 w-full border-2 border-sky-200 rounded-lg p-2"></textarea></label>
   <div class="space-y-2"><label class="text-xs font-bold" for="edit-quiz-option-count">선택지 유형</label><select id="edit-quiz-option-count" onchange="updateQuizOptionInputs(true)" class="w-full border-2 border-sky-200 rounded-lg p-2 bg-white"><option value="4">4개 선택지 (객관식)</option><option value="2">2개 선택지 (OX 문제)</option></select><input id="edit-opt-0" class="w-full border border-sky-200 rounded p-2 text-sm" placeholder="1번 보기"><input id="edit-opt-1" class="w-full border border-sky-200 rounded p-2 text-sm" placeholder="2번 보기"><input id="edit-opt-2" class="w-full border border-sky-200 rounded p-2 text-sm" placeholder="3번 보기"><input id="edit-opt-3" class="w-full border border-sky-200 rounded p-2 text-sm" placeholder="4번 보기"></div>
-  <label class="block text-xs font-bold">정답<select id="edit-quiz-answer" class="mt-1 w-full border border-sky-200 rounded p-2"><option value="0">1번</option><option value="1">2번</option><option value="2">3번</option><option value="3">4번</option></select></label>
+  <label class="block text-xs font-bold">정답<select id="edit-quiz-answer" class="mt-1 w-full border-2 border-sky-200 rounded-lg p-2"><option value="0">1번</option><option value="1">2번</option><option value="2">3번</option><option value="3">4번</option></select></label>
   <label class="block text-xs font-bold">정답 해설<textarea id="edit-quiz-explanation" rows="2" class="mt-1 w-full border-2 border-sky-200 rounded-lg p-2"></textarea></label>
   <div class="flex gap-2"><button type="button" onclick="closeQuizEdit()" class="flex-1 pixel-btn bg-slate-200 py-3 rounded-lg">취소</button><button type="button" onclick="saveQuizEdit()" class="flex-1 pixel-btn bg-sky-300 py-3 rounded-lg font-bold">수정 내용 저장</button></div>
  </div>
@@ -307,6 +307,17 @@ body{background-color:#fff5f7;background-image:radial-gradient(#fbcfe8 20%,trans
   <label class="block text-xs font-bold">비밀번호<input id="settings-password-input" type="password" autocomplete="off" class="mt-1 w-full border-2 border-amber-200 rounded-lg p-3 text-base" placeholder="비밀번호 입력"></label>
   <p id="settings-password-error" class="hidden text-xs text-rose-600">비밀번호가 올바르지 않습니다.</p>
   <div class="flex gap-2"><button type="button" onclick="hideModal('settings-password-modal')" class="flex-1 pixel-btn bg-slate-200 py-3 rounded-lg">취소</button><button type="submit" class="flex-1 pixel-btn bg-amber-300 py-3 rounded-lg font-bold">확인</button></div>
+ </form>
+</div>
+
+<!-- 문항별 누적 통계 비밀번호 확인 모달 -->
+<div id="stats-password-modal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-[88] hidden items-center justify-center p-4" aria-hidden="true">
+ <form class="modal-card pixel-box bg-white max-w-sm w-full p-6 rounded-2xl space-y-4 border-violet-400" onsubmit="event.preventDefault();verifyStatsPassword()">
+  <div class="flex justify-between items-center"><h3 class="text-lg font-bold text-violet-900">🔒 문항별 누적 통계 접근</h3><button type="button" onclick="hideModal('stats-password-modal')" class="pixel-btn bg-slate-200 px-3 py-2 rounded">✕</button></div>
+  <p class="text-sm text-slate-600">문항별 누적 통계를 보려면 비밀번호를 입력하세요.</p>
+  <label class="block text-xs font-bold">비밀번호<input id="stats-password-input" type="password" autocomplete="off" class="mt-1 w-full border-2 border-violet-200 rounded-lg p-3 text-base" placeholder="비밀번호 입력"></label>
+  <p id="stats-password-error" class="hidden text-xs text-rose-600">비밀번호가 올바르지 않습니다.</p>
+  <div class="flex gap-2"><button type="button" onclick="hideModal('stats-password-modal')" class="flex-1 pixel-btn bg-slate-200 py-3 rounded-lg">취소</button><button type="submit" class="flex-1 pixel-btn bg-violet-300 py-3 rounded-lg font-bold">확인</button></div>
  </form>
 </div>
 
@@ -994,7 +1005,30 @@ function finishFinalMission(){
 }
 
 function openQuizUsageStats(){
- $('quiz-stats-search').value='';$('quiz-stats-sort').value='accuracy';renderQuizUsageStats();showModal('quiz-usage-stats-modal');
+ const input=$('stats-password-input');
+ const error=$('stats-password-error');
+ if(input)input.value='';
+ if(error)error.classList.add('hidden');
+ showModal('stats-password-modal');
+ if(input)setTimeout(()=>input.focus(),0);
+}
+function verifyStatsPassword(){
+ const input=$('stats-password-input');
+ const error=$('stats-password-error');
+ if(!input)return;
+ if(input.value==='#1004'){
+  hideModal('stats-password-modal');
+  input.value='';
+  if(error)error.classList.add('hidden');
+  $('quiz-stats-search').value='';
+  $('quiz-stats-sort').value='accuracy';
+  renderQuizUsageStats();
+  showModal('quiz-usage-stats-modal');
+ }else{
+  if(error)error.classList.remove('hidden');
+  input.focus();
+  input.select();
+ }
 }
 function closeQuizUsageStats(){hideModal('quiz-usage-stats-modal')}
 function renderQuizUsageStats(){
